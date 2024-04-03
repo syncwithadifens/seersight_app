@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -17,11 +18,25 @@ class MapSampleState extends State<MapSample> {
   GoogleMapController? mapController;
   StreamSubscription? positionStream;
   LocationPermission? permission;
+  BitmapDescriptor markerIcon = BitmapDescriptor.defaultMarker;
 
   @override
   void initState() {
+    setCustomPinIcon();
     getUserLocation();
     super.initState();
+  }
+
+  void setCustomPinIcon() {
+    BitmapDescriptor.fromAssetImage(
+            const ImageConfiguration(), 'assets/icons/motorExcMark.png')
+        .then(
+      (value) => setState(
+        () {
+          markerIcon = value;
+        },
+      ),
+    );
   }
 
   void getUserLocation() async {
@@ -37,7 +52,6 @@ class MapSampleState extends State<MapSample> {
     if (GetPlatform.isAndroid) {
       locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.high,
-        forceLocationManager: true,
       );
     } else if (GetPlatform.isIOS || GetPlatform.isMacOS) {
       locationSettings = AppleSettings(
@@ -63,7 +77,7 @@ class MapSampleState extends State<MapSample> {
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: LatLng(position.latitude, position.longitude),
-            zoom: 14.0,
+            zoom: 13.99,
           ),
         ),
       );
@@ -73,23 +87,50 @@ class MapSampleState extends State<MapSample> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height,
-          width: MediaQuery.of(context).size.width,
-          child: GoogleMap(
-            markers: {
-              Marker(
-                  markerId: const MarkerId('Live Location'),
-                  position: location ?? const LatLng(0, 0))
-            },
-            initialCameraPosition:
-                const CameraPosition(target: LatLng(0.0, 0.0)),
-            onMapCreated: (GoogleMapController controller) {
-              mapController = controller;
-            },
-          ),
+    return AnnotatedRegion(
+      value: const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        body: Stack(
+          children: [
+            GoogleMap(
+              markers: {
+                Marker(
+                  markerId: const MarkerId('Current User'),
+                  position: location ?? const LatLng(0, 0),
+                  icon: markerIcon,
+                ),
+              },
+              initialCameraPosition:
+                  const CameraPosition(target: LatLng(0.0, 0.0)),
+              onMapCreated: (GoogleMapController controller) {
+                mapController = controller;
+              },
+            ),
+            Positioned(
+              top: 25,
+              left: 10,
+              child: Container(
+                height: 50,
+                width: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.amber,
+                ),
+                child: const Center(
+                    child: Icon(
+                  Icons.chevron_left,
+                  size: 40,
+                )),
+              ),
+            ),
+            Positioned(
+              right: 18,
+              bottom: 130,
+              child: GestureDetector(
+                  onTap: () => Geolocator.getCurrentPosition(),
+                  child: const Icon(Icons.my_location)),
+            )
+          ],
         ),
       ),
     );
