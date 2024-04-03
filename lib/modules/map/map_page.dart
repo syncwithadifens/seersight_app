@@ -18,22 +18,36 @@ class MapSampleState extends State<MapSample> {
   GoogleMapController? mapController;
   StreamSubscription? positionStream;
   LocationPermission? permission;
-  BitmapDescriptor markerIcon = BitmapDescriptor.defaultMarker;
+  BitmapDescriptor usermarkerIcon = BitmapDescriptor.defaultMarker;
+  BitmapDescriptor otherusersmarkerIcon = BitmapDescriptor.defaultMarker;
 
   @override
   void initState() {
-    setCustomPinIcon();
+    setCurrentUserIcon();
+    setOtherUsersIcon();
     getUserLocation();
     super.initState();
   }
 
-  void setCustomPinIcon() {
+  void setCurrentUserIcon() {
     BitmapDescriptor.fromAssetImage(
             const ImageConfiguration(), 'assets/icons/motorExcMark.png')
         .then(
       (value) => setState(
         () {
-          markerIcon = value;
+          usermarkerIcon = value;
+        },
+      ),
+    );
+  }
+
+  void setOtherUsersIcon() {
+    BitmapDescriptor.fromAssetImage(
+            const ImageConfiguration(), 'assets/icons/motorLocMark.png')
+        .then(
+      (value) => setState(
+        () {
+          otherusersmarkerIcon = value;
         },
       ),
     );
@@ -77,7 +91,7 @@ class MapSampleState extends State<MapSample> {
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: LatLng(position.latitude, position.longitude),
-            zoom: 13.99,
+            zoom: 12.0,
           ),
         ),
       );
@@ -87,6 +101,23 @@ class MapSampleState extends State<MapSample> {
 
   @override
   Widget build(BuildContext context) {
+    List<Marker> otherUsers = [
+      Marker(
+        markerId: const MarkerId('User 2'),
+        position: const LatLng(-6.174369315176477, 106.82548239827156),
+        icon: otherusersmarkerIcon,
+      ),
+      Marker(
+        markerId: const MarkerId('User 3'),
+        position: const LatLng(-6.2339719110827465, 106.7985151335597),
+        icon: otherusersmarkerIcon,
+      ),
+      Marker(
+        markerId: const MarkerId('User 4'),
+        position: const LatLng(-6.173853318151117, 106.79092146456242),
+        icon: otherusersmarkerIcon,
+      ),
+    ];
     return AnnotatedRegion(
       value: const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
       child: Scaffold(
@@ -97,13 +128,32 @@ class MapSampleState extends State<MapSample> {
                 Marker(
                   markerId: const MarkerId('Current User'),
                   position: location ?? const LatLng(0, 0),
-                  icon: markerIcon,
+                  icon: usermarkerIcon,
                 ),
+                ...otherUsers
               },
               initialCameraPosition:
                   const CameraPosition(target: LatLng(0.0, 0.0)),
               onMapCreated: (GoogleMapController controller) {
                 mapController = controller;
+                for (var element in otherUsers) {
+                  double distanceInMeters = Geolocator.distanceBetween(
+                      location!.latitude,
+                      location!.longitude,
+                      element.position.latitude,
+                      element.position.longitude);
+                  debugPrint(
+                      'Jarak dengan ${element.markerId.value}: ${distanceInMeters.round() / 1000} km');
+                }
+              },
+              circles: {
+                Circle(
+                    circleId: const CircleId('area'),
+                    center: location ?? const LatLng(0, 0),
+                    radius: 4000,
+                    fillColor: Colors.black.withOpacity(0.3),
+                    strokeWidth: 1,
+                    strokeColor: Colors.black),
               },
             ),
             Positioned(
@@ -117,19 +167,13 @@ class MapSampleState extends State<MapSample> {
                   color: Colors.amber,
                 ),
                 child: const Center(
-                    child: Icon(
-                  Icons.chevron_left,
-                  size: 40,
-                )),
+                  child: Icon(
+                    Icons.chevron_left,
+                    size: 40,
+                  ),
+                ),
               ),
             ),
-            Positioned(
-              right: 18,
-              bottom: 130,
-              child: GestureDetector(
-                  onTap: () => Geolocator.getCurrentPosition(),
-                  child: const Icon(Icons.my_location)),
-            )
           ],
         ),
       ),
